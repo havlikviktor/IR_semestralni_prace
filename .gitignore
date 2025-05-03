@@ -1,0 +1,15 @@
+# Ignorování složek a souborů podle tvých požadavků
+
+eval/output/
+eval/eval_data_cs/
+eval/eval_data_en/
+eval/stopwords/
+eval/stemmer.exe
+eval/model.udpipe
+.idea/
+*.iml
+*.pyc
+games.json
+stemmer.exe
+model.udpipe
+stopwords/
