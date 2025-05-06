@@ -1,6 +1,6 @@
 import json
 from typing import Iterable
-from tokenizer import RegexMatchTokenizer
+from tokenizer import Tokenizer, RegexMatchTokenizer, BooleanMatchTokenizer
 from preprocess import *
 from collections import Counter
 from tqdm import tqdm
@@ -12,14 +12,27 @@ class Document:
         self.tokens = None
         self.doc_id = doc_id
 
-    def tokenize(self):
-        tokenizer = RegexMatchTokenizer()
+    def tokenize(self, tokenizer: Tokenizer):
         self.tokens = tokenizer.tokenize(self.text)
         return self
 
     def preprocess(self, preprocessing_pipeline: PreprocessingPipeline):
         self.tokens = preprocessing_pipeline.preprocess(self.tokens, self.text)
         return self
+
+    def to_dict(self):
+        return {
+            "text": self.text,
+            "doc_id": self.doc_id,
+            "tokens": [token.to_dict() for token in self.tokens] if self.tokens else None
+        }
+
+    @staticmethod
+    def from_dict(data):
+        doc = Document(text=data["text"], doc_id=data["doc_id"])
+        if data.get("tokens") is not None:
+            doc.tokens = [Token.from_dict(t) for t in data["tokens"]]
+        return doc
 
 
 def build_dictionary(documents: Iterable[Document]):
@@ -33,23 +46,24 @@ def print_weighted_dictionary(dictionary: [Document]):
     for key, value in sorted(dictionary.items(), key=lambda x: x[1], reverse=True):
         print(f"{key} {value}")
 
+
 def load_documents(source_file: str, flags: set[str]) -> [Document]:
     documents = []
 
     with open(source_file, 'r', encoding="utf-8") as f:
         data = json.load(f)
-
+        tokenizer = RegexMatchTokenizer()
         if "-test" in flags:
             for doc in tqdm(data, desc="\033[92mLoading documents from file"):
                 title = doc.get("title", "") or ""
                 text = doc.get("text", "") or ""
                 doc_id = doc.get("id", "invalid_ID")
-                documents.append(Document(title + text, doc_id).tokenize())
+                documents.append(Document(title + text, doc_id).tokenize(tokenizer))
         else:
             doc_id = 1
-            for game in tqdm(data, desc="Loading game documents"):
+            for game in tqdm(data, desc="\033[92mLoading documents from file"):
                 for e in game.get("easter_eggs", []):
-                    documents.append(Document(e, "d" + str(doc_id)).tokenize())
+                    documents.append(Document(e, "d" + str(doc_id)).tokenize(tokenizer))
                     doc_id += 1
 
     return documents
@@ -89,8 +103,14 @@ def get_pipe(flags: set[str]):
 
 
 def get_boolean_pipe(flags: set[str]) -> PreprocessingPipeline:
-    pile: PreprocessingPipeline = get_pipe(flags)
-    pile.preprocessors.pop(2)
-    pile.preprocessors.pop(1)
-    return pile
+    pipeline = [
+        LowercasePreprocessor(),
+        UnicodePreprocessor()
+    ]
 
+    if "-l" in flags:
+        pipeline.insert(1, LemmatizerPreprocessor('model.udpipe'))
+    if "-s" in flags:
+        pipeline.append(StemmerPreprocessor(r"stemmer.exe"))
+
+    return PreprocessingPipeline(pipeline)

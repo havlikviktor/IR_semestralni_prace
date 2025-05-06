@@ -29,7 +29,7 @@ def show_help():
 
 
 def handle_user_index(user_input: list[str]) -> tuple[Indexer, set[str]]:
-    path = user_input[-1]
+    path = user_input[-1] + ".json"
     flags = set(user_input[1:])
 
     documents: list[Document] = load_documents(path, flags)
@@ -60,6 +60,10 @@ def handle_user_query(indexer: Indexer, query: str, top_finds: int, flags: set[s
 
 
 def handle_user_boolean_query(indexer: Indexer, query: str, flags: set[str]):
+    if not indexer or not indexer.indexed_documents:
+        print(f"{indexer.index_name}> " + Fore.RED + "Not existing index. run index <path> to initialize it")
+        return
+
     query: Document = Document(query, "query").tokenize()
     preprocess_document_boolean(query, flags)
     parser = BooleanParser(query)
@@ -83,6 +87,12 @@ def handle_user_add(indexer: Indexer, path: str, flags: set[str]):
 
 
 def handle_user_save(indexer: Indexer, path: str):
+    if not indexer or not indexer.indexed_documents:
+        print(f"{indexer.index_name}> " + Fore.RED + "Not existing index. run index <path> to initialize it")
+        return
+
+    if not indexer.inverted_index:
+        print(f"{indexer.index_name}> " + Fore.RED + "Couldn't save index")
     if indexer.save_index(path):
         print(f"{indexer.index_name}> " + Fore.GREEN + "Index saved")
     else:

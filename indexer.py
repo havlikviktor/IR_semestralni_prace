@@ -1,6 +1,6 @@
 import math
 import os
-import pickle
+import json
 
 from tqdm import tqdm
 from documents_manager import Document
@@ -9,7 +9,7 @@ from eval.interface import SearchEngine
 
 class Entry:
     def __init__(self, doc_id: str, tf: int):
-        self.doc_index = doc_id
+        self.doc_id = doc_id
         self.tf = tf
 
 
@@ -72,8 +72,8 @@ class Indexer(SearchEngine):
         # find all relevant documents that contains words from query
         for key in query_weights:
             for entry in self.inverted_index[key]:
-                if entry.doc_index not in relevant_documents:
-                    relevant_documents[entry.doc_index] = self.indexed_documents[entry.doc_index]
+                if entry.doc_id not in relevant_documents:
+                    relevant_documents[entry.doc_id] = self.indexed_documents[entry.doc_id]
 
         doc_scores: dict[str, float] = {}
 
@@ -113,44 +113,56 @@ class Indexer(SearchEngine):
             for term, entries in self.inverted_index.items():
                 serialized_entries = []
                 for entry in entries:
-                    serialized_entries.append((entry.doc_index, entry.tf))
+                    serialized_entries.append({"doc_id": entry.doc_id, "tf": entry.tf})
                     progress.update(1)
                 inverted_index_serialized[term] = serialized_entries
 
             progress.close()
 
-            data = {
+            index_data = {
                 "inverted_index": inverted_index_serialized,
                 "indexed_documents": self.indexed_documents,
-                "documents": self.documents,
                 "index_name": self.index_name
             }
-            print("\033[92mSaving index into file")
-            with open(path, "wb") as f:
-                pickle.dump(data, f)
+
+            print("\033[92mSaving index into JSON file")
+            with open(path + ".json", "w", encoding="utf-8") as f:
+                json.dump(index_data, f, ensure_ascii=False, indent=2)
+
+            print("\033[92mSaving documents into JSON file")
+            with open(path + "-doc.json", "w", encoding="utf-8") as f_docs:
+                json.dump([doc.to_dict() for doc in self.documents], f_docs, ensure_ascii=False, indent=2)
+
             return True
 
-        except (pickle.PicklingError, OSError):
+        except (TypeError, OSError) as e:
+            print(e)
             return False
 
-    def load_index(self, path: str) -> bool:
-        if not os.path.exists(path):
+    def load_index(self, path: str, load_doc: bool = False) -> bool:
+        if not os.path.exists(path + ".json"):
             return False
 
         try:
-            print("\033[92m Opening index file")
-            with open(path, "rb") as f:
-                data = pickle.load(f)
+            print("\033[92mOpening index file")
+            with open(path + ".json", "r", encoding="utf-8") as f:
+                data = json.load(f)
 
             self.inverted_index = {}
             for term, entries in tqdm(data["inverted_index"].items(), desc="\033[92mLoading inverted index"):
-                self.inverted_index[term] = [Entry(doc_id, tf) for doc_id, tf in entries]
+                self.inverted_index[term] = [Entry(entry["doc_id"], entry["tf"]) for entry in entries]
 
             self.indexed_documents = data["indexed_documents"]
-            self.documents = data["documents"]
             self.index_name = data.get("index_name", "")
+
+            if load_doc:
+                print("\033[92mOpening documents JSON file")
+                with open(path + "-doc.json", "r", encoding="utf-8") as f_docs:
+                    self.documents = [Document.from_dict(d) for d in json.load(f_docs)]
+
             return True
-        except (pickle.UnpicklingError, EOFError, OSError):
+
+        except (json.JSONDecodeError, KeyError, OSError):
             return False
 
     def boolean_search(self, query: str) -> set[str]:

@@ -1,12 +1,11 @@
 import json
 import os
 from datetime import datetime
-import subprocess
 from timeit import timeit
 
 from documents_manager import *
 from indexer import Indexer
-
+from boolean_parser import BooleanParser, Node
 
 def load_queries(file_path):
     queries = []
@@ -64,22 +63,30 @@ def evaluate_ranked(search_engine, queries, language='en'):
 
 
 def evaluate_boolean(search_engine, queries):
-    for query_id, query in enumerate(queries):
-        results = search_engine.boolean_search(query)
+    tokenizer: Tokenizer = BooleanMatchTokenizer()
+    Node.initialize_docs(search_engine.inverted_index)
+    a = Node.get_all_docs()
+    for query_id, query in tqdm(enumerate(queries), desc="\033[92mEvaluating boolean queries"):
+        query_doc: Document = Document(query, "query").tokenize(tokenizer)
+        preprocess_document_boolean(query_doc, flags)
+        parser = BooleanParser(query_doc.tokens)
+        ast = parser.parse()
+        ast.simplify()
+        results = ast.evaluate(search_engine.inverted_index)
         assert len(results) > 0
-        print(len(results))
+        # print(len(results))
 
 
 if __name__ == '__main__':
     language = 'cs'
     flags: set = {"-test", "-cz", "-l"}
-    # boolean_queries = load_queries(f'eval_data_{language}/boolean_queries_standard_100.txt')
 
     # documents: list[Document] = load_documents(f'eval_data_{language}/documents.json', flags)
-    ranked_queries = load_data_json(f'eval_data_{language}/full_text_queries.json')
+    # ranked_queries = load_data_json(f'eval_data_{language}/full_text_queries.json')
+    boolean_queries = load_queries(f'eval_data_{language}/boolean_queries_standard_100.txt')
     # preprocess_documents(documents, flags)
     indexer = Indexer()
     # indexer.index_documents(documents)
-    indexer.load_index("../saved_cs_stemm_title+text.pickle")
-    print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
-    # print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries), number=1)} seconds.")
+    indexer.load_index("../cs_l_title+text")
+    # print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
+    print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries), number=1)} seconds.")
