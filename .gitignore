@@ -9,6 +9,7 @@ eval/model.udpipe
 .idea/
 *.iml
 *.pyc
+*.json
 games.json
 stemmer.exe
 model.udpipe

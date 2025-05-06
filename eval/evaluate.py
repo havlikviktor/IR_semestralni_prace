@@ -50,14 +50,17 @@ def run_trec_eval(gold_file, results_file):
 def evaluate_ranked(search_engine, queries, language='en'):
     os.makedirs("output", exist_ok=True)
     results_file = f"output/ranked_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+    tokenizer: Tokenizer = RegexMatchTokenizer()
 
     with open(results_file, "w") as f:
         for query in tqdm(queries, desc="\033[92mEvaluating ranked queries"):
-            query_doc: Document = Document(query["description"], "query").tokenize()
+            query_doc: Document = Document(query["description"], "query").tokenize(tokenizer)
             preprocess_document(query_doc, flags)
             results = search_engine.search(query_doc)
             for i, (doc_id, score) in enumerate(results):
                 f.write(f"{query['id']} Q0 {doc_id} {i + 1} {score} runindex1\n")
+                if score < 0.05:
+                    break
 
     run_trec_eval(f'eval_data_{language}/gold_relevancies.txt', results_file)
 
@@ -65,7 +68,7 @@ def evaluate_ranked(search_engine, queries, language='en'):
 def evaluate_boolean(search_engine, queries):
     tokenizer: Tokenizer = BooleanMatchTokenizer()
     Node.initialize_docs(search_engine.inverted_index)
-    a = Node.get_all_docs()
+
     for query_id, query in tqdm(enumerate(queries), desc="\033[92mEvaluating boolean queries"):
         query_doc: Document = Document(query, "query").tokenize(tokenizer)
         preprocess_document_boolean(query_doc, flags)
@@ -81,12 +84,10 @@ if __name__ == '__main__':
     language = 'cs'
     flags: set = {"-test", "-cz", "-l"}
 
-    # documents: list[Document] = load_documents(f'eval_data_{language}/documents.json', flags)
-    # ranked_queries = load_data_json(f'eval_data_{language}/full_text_queries.json')
+    ranked_queries = load_data_json(f'eval_data_{language}/full_text_queries.json')
     boolean_queries = load_queries(f'eval_data_{language}/boolean_queries_standard_100.txt')
-    # preprocess_documents(documents, flags)
+
     indexer = Indexer()
-    # indexer.index_documents(documents)
     indexer.load_index("../cs_l_title+text")
-    # print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
+    print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
     print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries), number=1)} seconds.")
