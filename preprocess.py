@@ -54,16 +54,26 @@ class StopWordsPreprocessor(TokenPreprocessor):
 
 
 class StemmerPreprocessor(TokenPreprocessor):
-
-    def __init__(self, stemmer_path: str):
+    def __init__(self, stemmer_path: str, args: str):
         self.stemmer_path = stemmer_path
+        self.args = args.split()
 
     def preprocess_all(self, tokens: list[Token], document: str) -> list[Token]:
         input_data = "\n".join([token.processed_form for token in tokens]) + "\n"
-        process = subprocess.Popen([self.stemmer_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-        stdout, stderr = process.communicate(input=input_data)
-        stemmed_words = stdout.splitlines()
 
+        process = subprocess.Popen(
+            [self.stemmer_path] + self.args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = process.communicate(input=input_data)
+
+        if process.returncode != 0:
+            raise RuntimeError(f"Stemmer failed: {stderr}")
+
+        stemmed_words = stdout.splitlines()
         stemmed_tokens = []
         for original_token, stemmed_word in zip(tokens, stemmed_words):
             new_token = Token(processed_form=stemmed_word,

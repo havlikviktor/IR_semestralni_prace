@@ -82,12 +82,14 @@ def evaluate_boolean(search_engine, queries):
 
 if __name__ == '__main__':
     language = 'cs'
-    flags: set = {"-test", "-cz", "-l"}
+    flags: set = {"-test", "-cz", "-l:cz"}
 
     ranked_queries = load_data_json(f'eval_data_{language}/full_text_queries.json')
     boolean_queries = load_queries(f'eval_data_{language}/boolean_queries_standard_100.txt')
+    boolean_queries_10 = load_queries(f'eval_data_{language}/boolean_queries_standard_10.txt')
 
     indexer = Indexer()
-    indexer.load_index("../cs_l_title+text")
-    print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
-    print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries), number=1)} seconds.")
+    indexer.load_index("../cs_l")
+    # print(f"Ranked evaluation took {timeit(lambda: evaluate_ranked(indexer, ranked_queries, language), number=1)} seconds.")
+    # print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries), number=1)} seconds.")
+    print(f"Boolean evaluation took {timeit(lambda: evaluate_boolean(indexer, boolean_queries_10), number=1)} seconds.")

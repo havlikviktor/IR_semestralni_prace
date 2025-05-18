@@ -94,10 +94,17 @@ def get_pipe(flags: set[str]):
         UnicodePreprocessor()
     ]
 
-    if "-l" in flags:
-        pipeline.insert(4, LemmatizerPreprocessor('model.udpipe'))
-    if "-s" in flags:
-        pipeline.append(StemmerPreprocessor(r"stemmer.exe"))
+    if "-l:cz" in flags:
+        pipeline.insert(4, LemmatizerPreprocessor('model_cz.udpipe'))
+
+    if "-l:en" in flags:
+        pipeline.insert(4, LemmatizerPreprocessor('model_en.udpipe'))
+
+    if "-s:cz" in flags:
+        pipeline.append(StemmerPreprocessor(r"stemmer.exe", ""))
+
+    if "-s:en" in flags:
+        pipeline.append(StemmerPreprocessor(r"stemmer.exe", "-l en"))
 
     return PreprocessingPipeline(pipeline)
 
@@ -108,9 +115,16 @@ def get_boolean_pipe(flags: set[str]) -> PreprocessingPipeline:
         UnicodePreprocessor()
     ]
 
-    if "-l" in flags:
-        pipeline.insert(1, LemmatizerPreprocessor('model.udpipe'))
-    if "-s" in flags:
-        pipeline.append(StemmerPreprocessor(r"stemmer.exe"))
+    if "-l:cz" in flags:
+        pipeline.insert(1, LemmatizerPreprocessor('model_cz.udpipe'))
+
+    if "-l:en" in flags:
+        pipeline.insert(1, LemmatizerPreprocessor('model_en.udpipe'))
+
+    if "-s:cz" in flags:
+        pipeline.append(StemmerPreprocessor(r"stemmer.exe", ""))
+
+    if "-s:en" in flags:
+        pipeline.append(StemmerPreprocessor(r"stemmer.exe", "-l en"))
 
     return PreprocessingPipeline(pipeline)

@@ -101,6 +101,7 @@ class BooleanParser:
     def parse(self) -> Node:
         result = self.parse_expr()
         if self.current_token() is not None:
+            print(f"token is {self.current_token()} pos: {self.pos}")
             raise SyntaxError("Unexpected token at the end")
         return result
 

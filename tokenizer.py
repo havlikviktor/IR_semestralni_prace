@@ -74,7 +74,7 @@ class BooleanMatchTokenizer(Tokenizer):
         ("NOT", r'\bNOT\b', TokenType.NOT),
         ("LPAREN", r'\(', TokenType.LPAREN),
         ("RPAREN", r'\)', TokenType.RPAREN),
-        ("TERM", r'\w+(?:\.\w+)*', TokenType.WORD),
+        ("TERM", r'\d+[.,]\d+|\w+(?:[.,]\w+)*', TokenType.WORD),
         ("SKIP", r'\s+', None),
     ]
 

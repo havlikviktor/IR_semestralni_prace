@@ -3,35 +3,58 @@ from boolean_parser import BooleanParser, Node
 from documents_manager import *
 from indexer import Indexer
 from colorama import Fore, init, Style
-import readline
+from prompt_toolkit import PromptSession
+from Completer import DynamicCompleter
 
 
-############################## USER HELPERS #########################################
+# ############################# USER HELPERS #########################################
 
 def show_help():
     help_text = """
     Usage:
+
     1) index [flags] <path>
        Create new index from a JSON file at the given path.
        Used flags:
            -cz     Filter Czech stopwords
            -en     Filter English stopwords
            -sk     Filter Slovak stopwords
-           -l      Use lemmatization in preprocessing
-           -s      Use stemming in preprocessing
+           -l:<language> Use lemmatization in preprocessing
+           -s:<language> Use stemming in preprocessing
+        Example: index -cz -l:cz myData
+
     2) q $query words$
        Query the created index. The query must be surrounded by '$' symbols.
+       Example: q $cancer treatment$
 
-    3) top X
+    3) bq $boolean query$
+       Perform a boolean query using AND, OR, NOT operators.
+       The query must be surrounded by '$' symbols.
+       Example: bq $cancer AND treatment$
+
+    4) top <number>
        Set how many of the most relevant results should be shown for queries.
+       Example: top 10
 
-    4) exit
+    5) add <path>
+       Add additional documents from a JSON file at the given path to the existing index.
+
+    6) save <filename>
+       Save the current index to the given filename.
+
+    7) load <filename>
+       Load an existing index from the given filename.
+
+    8) help
+       Show this help message.
+
+    9) exit
        Exit the program.
     """
     print(help_text.strip())
 
 
-########################### HANDLE FUNCTIONS ##########################################
+# ########################## HANDLE FUNCTIONS ##########################################
 
 
 def handle_user_index(user_input: list[str]) -> tuple[Indexer, set[str]]:
@@ -45,6 +68,7 @@ def handle_user_index(user_input: list[str]) -> tuple[Indexer, set[str]]:
 
     if indexer.inverted_index:
         Node.initialize_docs(indexer.inverted_index)
+        completer.set_key_words(indexer.inverted_index.keys())
         indexer.index_name = os.path.splitext(os.path.basename(path))[0]
 
     return indexer, flags
@@ -134,6 +158,7 @@ def handle_user_load(path: str) -> Indexer:
     indexer = Indexer()
     if indexer.load_index(path, True):
         Node.initialize_docs(indexer.inverted_index)
+        completer.set_key_words(indexer.inverted_index.keys())
         print(f"{indexer.index_name}> " + Fore.LIGHTGREEN_EX + f"Index '{indexer.index_name}' loaded")
         return indexer
     else:
@@ -147,7 +172,7 @@ def main():
     flags: set[str] = set()
 
     while True:
-        user_input_raw: str = input(f"{indexer.index_name}> ").rstrip()
+        user_input_raw: str = session.prompt(f"{indexer.index_name}> ").rstrip()
         user_input: list[str] = user_input_raw.split()
         input_len: int = len(user_input)
 
@@ -199,6 +224,12 @@ def main():
             else:
                 indexer = handle_user_load(user_input[1])
 
+        elif user_input[0] == "add":
+            if input_len != 2:
+                print(f"{indexer.index_name}> " + Fore.RED + f"Invalid number of arguments expected 2 got {input_len}")
+            else:
+                handle_user_add(indexer, user_input[1], flags)
+
         elif user_input[0] == "help":
             show_help()
 
@@ -208,5 +239,7 @@ def main():
 
 if __name__ == '__main__':
     init(autoreset=True)
+    completer = DynamicCompleter()
+    session = PromptSession(completer=completer)
     print("> Indexer started, run help for details")
     main()
